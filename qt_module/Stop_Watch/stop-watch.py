@@ -1,14 +1,28 @@
-# stop watch program using pyqt5
+"""
+Stopwatch Application
+A PyQt5-based stopwatch with start, stop, and reset functionality.
+"""
+
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout
-from PyQt5.QtCore import QTimer, QTime, Qt
+import os
+
+try:
+    from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout
+    from PyQt5.QtCore import QTimer, QTime, Qt
+except ImportError:
+    print("Installing PyQt5 library...")
+    os.system(f'{sys.executable} -m pip install PyQt5')
+    from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout
+    from PyQt5.QtCore import QTimer, QTime, Qt
 
 
-class Stop_watch(QWidget):
+class StopWatch(QWidget):
+    """Stopwatch widget with start, stop, and reset functionality."""
+    
     def __init__(self):
         super().__init__()
         self.time = QTime(0, 0, 0, 0)
-        self.time_label = QLabel("00:00:00", self)
+        self.time_label = QLabel("00:00:00.00", self)
         self.start_button = QPushButton("Start", self)
         self.stop_button = QPushButton("Stop", self)
         self.reset_button = QPushButton("Reset", self)
@@ -71,11 +85,12 @@ class Stop_watch(QWidget):
         self.time_label.setText(self.format_time(self.time))
 
     def format_time(self, time):
+        """Format time as HH:MM:SS.mm."""
         hours = time.hour()
         minutes = time.minute()
-        seconds = time.second()  # Corrected method name
+        seconds = time.second()
         milliseconds = time.msec() // 10
-        return f"{hours:02}:{minutes:02}:{seconds:02}.{milliseconds:02}"  # Corrected formatting
+        return f"{hours:02}:{minutes:02}:{seconds:02}.{milliseconds:02}"
 
     def update_display(self):
         self.time = self.time.addMSecs(10)
@@ -84,6 +99,6 @@ class Stop_watch(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    stopwatch = Stop_watch()
+    stopwatch = StopWatch()
     stopwatch.show()
     sys.exit(app.exec_())

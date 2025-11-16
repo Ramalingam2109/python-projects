@@ -1,15 +1,26 @@
-import sys, os
+"""
+Weather App
+A PyQt5-based desktop application to fetch and display weather information for any city.
+"""
+
+import sys
+import os
+
 try:
     import requests
-except:
-    os.system('python -m pip install requests')
-try: 
+except ImportError:
+    print("Installing requests library...")
+    os.system(f'{sys.executable} -m pip install requests')
+    import requests
+
+try:
     from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout
-    from PyQt5.QtCore import Qt  # Import Qt for alignment constants
-except:
-    os.system('python -m pip install PyQt5')
+    from PyQt5.QtCore import Qt
+except ImportError:
+    print("Installing PyQt5 library...")
+    os.system(f'{sys.executable} -m pip install PyQt5')
     from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout
-    from PyQt5.QtCore import Qt  # Import Qt for alignment constants
+    from PyQt5.QtCore import Qt
     
 class WeatherApp(QWidget):
     def __init__(self):
@@ -134,50 +145,52 @@ class WeatherApp(QWidget):
         self.get_weather_button.clicked.connect(self.get_details)
         
     def get_details(self):
+        """Fetch weather details for the entered city."""
+        # Note: Replace with your own API key from openweathermap.org
         api_key = 'e3476649856a7567b6f87637e8caff41'
-        city =  self.city_input.text()
+        city = self.city_input.text().strip()
+        
+        if not city:
+            self.display_error("Please enter a city name")
+            return
         
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}"
+        
         try:
-            response = requests.get(url)
-            response.raise_for_status()  # to get request code which gets passed using the request module . 
-            data =response.json()
-            if data["cod"] == 200:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get("cod") == 200:
                 self.display_weather(data)
             else:
-                print(data)
-        except requests.exceptions.HTTPError:   #exception type -1 
-            match response.status_code:
-                case 400:
-                    self.display_error("Bad Request: \n Plz check ur input")
-                case 401:
-                    self.display_error("Unauthorized or Invalud API Key ")
-                case 403:
-                    self.display_error("Forbidden error: \naccess is denied")
-                case 404:
-                    self.display_error("Not found: \nLocation not found ")
-                case 500:
-                    self.display_error("Server Error:\n Please try again Later    ")
-                case 502:
-                    self.display_error("Bad Gateway:\n Invalid response from server ")
-                case 503:
-                    self.display_error("Service Unavailable:\n Server is down  ")
-                case 504:
-                    self.display_error("GateWay timeout \n No ")
-                case _:
-                    self.display_error("HTTP error occured")
+                self.display_error(f"Error: {data.get('message', 'Unknown error')}")
+                
+        except requests.exceptions.HTTPError as e:
+            status_code = response.status_code
+            error_messages = {
+                400: "Bad Request:\nPlease check your input",
+                401: "Unauthorized:\nInvalid API Key",
+                403: "Forbidden:\nAccess is denied",
+                404: "Not Found:\nLocation not found",
+                500: "Server Error:\nPlease try again later",
+                502: "Bad Gateway:\nInvalid response from server",
+                503: "Service Unavailable:\nServer is down",
+                504: "Gateway Timeout:\nRequest timed out"
+            }
+            self.display_error(error_messages.get(status_code, f"HTTP Error {status_code}"))
                     
-        except requests.exceptions.ConnectionError: # exception type  - 2 
-            self.display_error("Connection Error: \n Check your internet connection")
+        except requests.exceptions.ConnectionError:
+            self.display_error("Connection Error:\nCheck your internet connection")
             
-        except requests.exceptions.Timeout: # exception type  - 3
-            self.display_error(f"Timeout Error: \n The request timed out ")
+        except requests.exceptions.Timeout:
+            self.display_error("Timeout Error:\nThe request timed out")
             
-        except requests.exceptions.TooManyRedirects:# exception type  - 4
-            self.display_error(f"Too many redirects: Check the URL")
+        except requests.exceptions.TooManyRedirects:
+            self.display_error("Too Many Redirects:\nCheck the URL")
         
-        except requests.exceptions.RequestException as req_error:  # exception type  - 5
-            print(f"Request error {req_error}")
+        except requests.exceptions.RequestException as req_error:
+            self.display_error(f"Request Error:\n{str(req_error)}")
         
         
         
@@ -187,17 +200,22 @@ class WeatherApp(QWidget):
         self.emoji_label.clear()
         self.description_label.clear()    
     
-    def display_weather(self,data):
-        self.temprature_label.setStyleSheet("font-size :75px;")
-        temprature_k = data["main"]["temp"]
-        temprature_c = temprature_k -273
-        temprature_f = (temprature_k *9/5) -459.67
-        weather_description = data["weather"][0]["description"]
+    def display_weather(self, data):
+        """Display weather information in the UI."""
+        self.temprature_label.setStyleSheet("font-size: 75px; color: #e74c3c;")
+        
+        temperature_k = data["main"]["temp"]
+        temperature_c = temperature_k - 273.15
+        temperature_f = (temperature_k * 9/5) - 459.67
+        
+        weather_description = data["weather"][0]["description"].title()
         weather_id = data["weather"][0]["id"]
+        city_name = data["name"]
+        country = data["sys"].get("country", "")
+        
         self.emoji_label.setText(self.get_weather_emoji(weather_id))
-        self.temprature_label.setText(f"{temprature_f:.0f}°F")
-        self.description_label.setText(f"{weather_description}")
-        self.emoji_label
+        self.temprature_label.setText(f"{temperature_c:.1f}°C / {temperature_f:.0f}°F")
+        self.description_label.setText(f"{city_name}, {country}\n{weather_description}")
     
     @staticmethod
     def get_weather_emoji(weather_id):
@@ -233,9 +251,9 @@ class WeatherApp(QWidget):
         
         
         
-if __name__ =="__main__":
-    app =  QApplication(sys.argv)
-    Weather_app =WeatherApp()
-    Weather_app.show()
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    weather_app = WeatherApp()
+    weather_app.show()
     sys.exit(app.exec_())
     
